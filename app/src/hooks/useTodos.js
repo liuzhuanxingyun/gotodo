@@ -1,18 +1,14 @@
-import { useState, useEffect } from 'react';
-
-const STORAGE_KEY = 'gotodo-data';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
 
 export function useTodos() {
-  const [todos, setTodos] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  });
+  // useLiveQuery 会自动订阅数据库变化并更新组件
+  // 默认返回空数组以防止加载时报错
+  const todos = useLiveQuery(() => 
+    db.todos.orderBy('createdAt').reverse().toArray()
+  ) || [];
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
-  }, [todos]);
-
-  const addTodo = (text, isImportant, isUrgent) => {
+  const addTodo = async (text, isImportant, isUrgent) => {
     const newTodo = {
       id: crypto.randomUUID(),
       text,
@@ -22,99 +18,84 @@ export function useTodos() {
       createdAt: Date.now(),
       subTasks: []
     };
-    setTodos(prev => [newTodo, ...prev]);
+    await db.todos.add(newTodo);
     return newTodo;
   };
 
-  const toggleTodo = (id) => {
-    setTodos(prev => prev.map(todo =>
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ));
+  const toggleTodo = async (id) => {
+    const todo = await db.todos.get(id);
+    if (todo) {
+      await db.todos.update(id, { completed: !todo.completed });
+    }
   };
 
-  const deleteTodo = (id) => {
-    setTodos(prev => prev.filter(todo => todo.id !== id));
+  const deleteTodo = async (id) => {
+    await db.todos.delete(id);
   };
 
-  const addSubTask = (todoId, text) => {
-    setTodos(prev => prev.map(todo => {
-      if (todo.id === todoId) {
-        return {
-          ...todo,
-          subTasks: [...todo.subTasks, {
-            id: crypto.randomUUID(),
-            text,
-            completed: false
-          }]
-        };
-      }
-      return todo;
-    }));
+  const addSubTask = async (todoId, text) => {
+    const todo = await db.todos.get(todoId);
+    if (todo) {
+      const newSubTask = {
+        id: crypto.randomUUID(),
+        text,
+        completed: false
+      };
+      // IndexedDB 支持存储对象数组，直接更新 subTasks 字段
+      await db.todos.update(todoId, {
+        subTasks: [...todo.subTasks, newSubTask]
+      });
+    }
   };
 
-  const toggleSubTask = (todoId, subTaskId) => {
-    setTodos(prev => prev.map(todo => {
-      if (todo.id === todoId) {
-        return {
-          ...todo,
-          subTasks: todo.subTasks.map(sub =>
-            sub.id === subTaskId ? { ...sub, completed: !sub.completed } : sub
-          )
-        };
-      }
-      return todo;
-    }));
+  const toggleSubTask = async (todoId, subTaskId) => {
+    const todo = await db.todos.get(todoId);
+    if (todo) {
+      const updatedSubTasks = todo.subTasks.map(sub =>
+        sub.id === subTaskId ? { ...sub, completed: !sub.completed } : sub
+      );
+      await db.todos.update(todoId, { subTasks: updatedSubTasks });
+    }
   };
 
-  const updateTodo = (id, newText) => {
-    setTodos(prev => prev.map(todo =>
-      todo.id === id ? { ...todo, text: newText } : todo
-    ));
+  const updateTodo = async (id, newText) => {
+    await db.todos.update(id, { text: newText });
   };
 
-  const updateSubTask = (todoId, subTaskId, newText) => {
-    setTodos(prev => prev.map(todo => {
-      if (todo.id === todoId) {
-        return {
-          ...todo,
-          subTasks: todo.subTasks.map(sub =>
-            sub.id === subTaskId ? { ...sub, text: newText } : sub
-          )
-        };
-      }
-      return todo;
-    }));
+  const updateSubTask = async (todoId, subTaskId, newText) => {
+    const todo = await db.todos.get(todoId);
+    if (todo) {
+      const updatedSubTasks = todo.subTasks.map(sub =>
+        sub.id === subTaskId ? { ...sub, text: newText } : sub
+      );
+      await db.todos.update(todoId, { subTasks: updatedSubTasks });
+    }
   };
 
-  const moveTodoToQuadrant = (todoId, quadrantId) => {
-    setTodos(prev => prev.map(todo => {
-      if (todo.id === todoId) {
-        let isImportant = false;
-        let isUrgent = false;
+  const moveTodoToQuadrant = async (todoId, quadrantId) => {
+    let isImportant = false;
+    let isUrgent = false;
 
-        switch (quadrantId) {
-          case 'q1': // Do First
-            isImportant = true;
-            isUrgent = true;
-            break;
-          case 'q2': // Schedule
-            isImportant = true;
-            isUrgent = false;
-            break;
-          case 'q3': // Delegate
-            isImportant = false;
-            isUrgent = true;
-            break;
-          case 'q4': // Eliminate
-            isImportant = false;
-            isUrgent = false;
-            break;
-        }
+    switch (quadrantId) {
+      case 'q1': // Do First
+        isImportant = true;
+        isUrgent = true;
+        break;
+      case 'q2': // Schedule
+        isImportant = true;
+        isUrgent = false;
+        break;
+      case 'q3': // Delegate
+        isImportant = false;
+        isUrgent = true;
+        break;
+      case 'q4': // Eliminate
+        isImportant = false;
+        isUrgent = false;
+        break;
+    }
 
-        return { ...todo, isImportant, isUrgent };
-      }
-      return todo;
-    }));
+    await db.todos.update(todoId, { isImportant, isUrgent });
   };
 
   return {
