@@ -329,10 +329,17 @@ export default function MatrixView({ todos, onMoveTodo, ...props }) {
     const [activeId, setActiveId] = useState(null);
     const activeTodo = activeId ? todos.find(t => t.id === activeId) : null;
 
-    const q1 = todos.filter(t => t.isImportant && t.isUrgent);
-    const q2 = todos.filter(t => t.isImportant && !t.isUrgent);
-    const q3 = todos.filter(t => !t.isImportant && t.isUrgent);
-    const q4 = todos.filter(t => !t.isImportant && !t.isUrgent);
+    const sortTodos = (list) => {
+        return list.sort((a, b) => {
+            if (a.completed === b.completed) return 0;
+            return a.completed ? 1 : -1;
+        });
+    };
+
+    const q1 = sortTodos(todos.filter(t => t.isImportant && t.isUrgent));
+    const q2 = sortTodos(todos.filter(t => t.isImportant && !t.isUrgent));
+    const q3 = sortTodos(todos.filter(t => !t.isImportant && t.isUrgent));
+    const q4 = sortTodos(todos.filter(t => !t.isImportant && !t.isUrgent));
 
     const getTodoColor = (todo) => {
         if (todo.isImportant && todo.isUrgent) return 'var(--q1-color)';
