@@ -6,7 +6,7 @@ import { DndContext, useDraggable, useDroppable, DragOverlay, defaultDropAnimati
 import { CSS } from '@dnd-kit/utilities';
 
 // Presentation component (no DnD logic)
-function TodoItem({ todo, onToggle, onDelete, onUpdate, onAddSubTask, onToggleSubTask, onUpdateSubTask, isOverlay, dragProps = {} }) {
+function TodoItem({ todo, onToggle, onDelete, onUpdate, onAddSubTask, onToggleSubTask, onUpdateSubTask, isOverlay, dragProps = {}, color }) {
     const { t } = useLanguage();
     const [expanded, setExpanded] = useState(false);
     const [subInput, setSubInput] = useState('');
@@ -40,8 +40,8 @@ function TodoItem({ todo, onToggle, onDelete, onUpdate, onAddSubTask, onToggleSu
             className={`glass-panel ${isOverlay ? 'overlay-item' : ''}`}
             style={{
                 padding: '1rem',
-                marginBottom: '0.8rem',
-                borderLeft: `4px solid ${todo.completed ? 'var(--text-secondary)' : 'var(--accent-color)'}`,
+                marginBottom: '1rem',
+                borderLeft: `4px solid ${todo.completed ? 'var(--text-secondary)' : (color || 'var(--accent-color)')}`,
                 opacity: todo.completed ? 0.6 : 1,
                 background: isOverlay ? 'var(--glass-bg-hover)' : 'var(--glass-bg)',
                 position: 'relative',
@@ -294,7 +294,7 @@ function Quadrant({ id, title, color, todos, ...props }) {
                 flexDirection: 'column',
                 height: '100%',
                 padding: '1rem',
-                borderTop: `4px solid ${color}`,
+                borderTop: `5px solid ${color}`,
                 background: isOver ? 'var(--glass-bg-hover)' : 'var(--glass-bg-secondary)',
                 borderRadius: '16px',
                 boxShadow: isOver ? '0 0 20px rgba(59, 130, 246, 0.2)' : 'var(--glass-shadow)',
@@ -306,9 +306,9 @@ function Quadrant({ id, title, color, todos, ...props }) {
                 {title}
                 <span style={{ opacity: 0.5, fontSize: '0.9rem', background: 'rgba(0,0,0,0.1)', padding: '2px 8px', borderRadius: '12px' }}>{todos.length}</span>
             </h3>
-            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', minHeight: 0 }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '10px', minHeight: 0 }}>
                 {todos.map(todo => (
-                    <DraggableTodoItem key={todo.id} todo={todo} {...props} />
+                    <DraggableTodoItem key={todo.id} todo={todo} color={color} {...props} />
                 ))}
                 {todos.length === 0 && (
                     <motion.div
@@ -333,6 +333,13 @@ export default function MatrixView({ todos, onMoveTodo, ...props }) {
     const q2 = todos.filter(t => t.isImportant && !t.isUrgent);
     const q3 = todos.filter(t => !t.isImportant && t.isUrgent);
     const q4 = todos.filter(t => !t.isImportant && !t.isUrgent);
+
+    const getTodoColor = (todo) => {
+        if (todo.isImportant && todo.isUrgent) return 'var(--q1-color)';
+        if (todo.isImportant && !todo.isUrgent) return 'var(--q2-color)';
+        if (!todo.isImportant && todo.isUrgent) return 'var(--q3-color)';
+        return 'var(--q4-color)';
+    };
 
     const handleDragStart = (event) => {
         setActiveId(event.active.id);

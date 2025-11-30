@@ -119,7 +119,7 @@ function AppContent() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+              style={{ height: '100%', display: 'flex', flexDirection: 'column', paddingTop: '1rem' }}
             >
               <ChatInterface onAddTodo={addTodo} />
             </motion.div>
